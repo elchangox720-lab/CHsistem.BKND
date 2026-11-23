@@ -10,3 +10,7 @@ services:
     envVars:
       - key: NODE_VERSION
         value: 24.21.0
+      - key: MONGODB_DB
+        value: chsistem
+      - key: MONGODB_URI
+        sync: false
