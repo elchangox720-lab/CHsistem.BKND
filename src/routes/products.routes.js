@@ -17,6 +17,72 @@ import {
 
 const router = Router();
 
+const specSchema = z.object({
+  label: z.string().trim().min(1, 'La característica es requerida').max(60),
+  value: z.string().trim().min(1, 'El valor es requerido').max(160),
+});
+
+const publicProductFields =
+  'sku name description category brand model price specs stock';
+
+router.get(
+  '/public',
+  asyncHandler(async (req, res) => {
+    const search = text(req.query.search);
+    const brand = text(req.query.brand);
+    const model = text(req.query.model);
+    const category = text(req.query.category);
+    const query = { active: true };
+
+    if (search) {
+      const regex = new RegExp(escapeRegex(search), 'i');
+      query.$or = [
+        { name: regex },
+        { sku: regex },
+        { description: regex },
+        { category: regex },
+        { brand: regex },
+        { model: regex },
+      ];
+    }
+
+    if (brand) query.brand = brand;
+    if (model) query.model = model;
+    if (category) query.category = category;
+
+    const [products, brands, models, categories] = await Promise.all([
+      Product.find(query)
+        .select(publicProductFields)
+        .sort({ brand: 1, model: 1, name: 1 })
+        .limit(200)
+        .lean(),
+      Product.distinct('brand', { active: true, brand: { $nin: ['', null] } }),
+      Product.distinct('model', { active: true, model: { $nin: ['', null] } }),
+      Product.distinct('category', {
+        active: true,
+        category: { $nin: ['', null] },
+      }),
+    ]);
+
+    const cleanList = (values) =>
+      values.filter(Boolean).sort((a, b) => a.localeCompare(b, 'es'));
+
+    const items = products.map(({ stock, ...product }) => ({
+      ...product,
+      _id: String(product._id),
+      available: stock > 0,
+    }));
+
+    res.json({
+      items,
+      total: items.length,
+      brands: cleanList(brands),
+      models: cleanList(models),
+      categories: cleanList(categories),
+    });
+  })
+);
+
 router.use(authenticate);
 
 const createSchema = z.object({
@@ -24,6 +90,9 @@ const createSchema = z.object({
   name: z.string().trim().min(2, 'El nombre es requerido').max(120),
   description: z.string().trim().max(500).optional().default(''),
   category: z.string().trim().max(60).optional().default(''),
+  brand: z.string().trim().max(80).optional().default(''),
+  model: z.string().trim().max(80).optional().default(''),
+  specs: z.array(specSchema).max(20).optional().default([]),
   price: z.coerce.number().min(0, 'El precio no puede ser negativo'),
   cost: z.coerce.number().min(0).optional().default(0),
   stock: z.coerce.number().int().min(0).optional().default(0),
@@ -36,6 +105,9 @@ const updateSchema = z.object({
   name: z.string().trim().min(2, 'El nombre es requerido').max(120).optional(),
   description: z.string().trim().max(500).optional(),
   category: z.string().trim().max(60).optional(),
+  brand: z.string().trim().max(80).optional(),
+  model: z.string().trim().max(80).optional(),
+  specs: z.array(specSchema).max(20).optional(),
   price: z.coerce.number().min(0).optional(),
   cost: z.coerce.number().min(0).optional(),
   stock: z.coerce.number().int().min(0).optional(),
@@ -49,6 +121,8 @@ router.get(
     const { page, limit, skip } = parsePagination(req.query);
     const search = text(req.query.search);
     const category = text(req.query.category);
+    const brand = text(req.query.brand);
+    const model = text(req.query.model);
     const active = boolFilter(req.query.active);
     const lowStock = req.query.lowStock === 'true';
 
@@ -56,10 +130,18 @@ router.get(
 
     if (search) {
       const regex = new RegExp(escapeRegex(search), 'i');
-      query.$or = [{ name: regex }, { sku: regex }, { category: regex }];
+      query.$or = [
+        { name: regex },
+        { sku: regex },
+        { category: regex },
+        { brand: regex },
+        { model: regex },
+      ];
     }
 
     if (category) query.category = category;
+    if (brand) query.brand = brand;
+    if (model) query.model = model;
     if (active !== undefined) query.active = active;
     if (lowStock) query.$expr = { $lte: ['$stock', '$minStock'] };
 
