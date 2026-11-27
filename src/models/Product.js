@@ -23,6 +23,7 @@ const productSchema = new mongoose.Schema(
     category: { type: String, trim: true, maxlength: 60, default: '' },
     brand: { type: String, trim: true, maxlength: 80, default: '' },
     model: { type: String, trim: true, maxlength: 80, default: '' },
+    image: { type: String, trim: true, maxlength: 1500000, default: '' },
     specs: { type: [specSchema], default: [] },
     price: { type: Number, required: true, min: 0, default: 0 },
     cost: { type: Number, min: 0, default: 0 },

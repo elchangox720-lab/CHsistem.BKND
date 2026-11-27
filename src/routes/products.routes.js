@@ -23,7 +23,7 @@ const specSchema = z.object({
 });
 
 const publicProductFields =
-  'sku name description category brand model price specs stock';
+  'sku name description category brand model image price specs stock';
 
 router.get(
   '/public',
@@ -92,6 +92,7 @@ const createSchema = z.object({
   category: z.string().trim().max(60).optional().default(''),
   brand: z.string().trim().max(80).optional().default(''),
   model: z.string().trim().max(80).optional().default(''),
+  image: z.string().trim().max(1500000).optional().default(''),
   specs: z.array(specSchema).max(20).optional().default([]),
   price: z.coerce.number().min(0, 'El precio no puede ser negativo'),
   cost: z.coerce.number().min(0).optional().default(0),
@@ -107,6 +108,7 @@ const updateSchema = z.object({
   category: z.string().trim().max(60).optional(),
   brand: z.string().trim().max(80).optional(),
   model: z.string().trim().max(80).optional(),
+  image: z.string().trim().max(1500000).optional(),
   specs: z.array(specSchema).max(20).optional(),
   price: z.coerce.number().min(0).optional(),
   cost: z.coerce.number().min(0).optional(),
